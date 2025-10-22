@@ -1,1 +1,1 @@
-print("Hello, Stinky poo!")
+print("Hello, What!")
