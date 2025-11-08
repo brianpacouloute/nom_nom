@@ -14,11 +14,21 @@ export default function Signup() {
     setLoading(true);
     setError("");
 
-    const { error: signUpError } = await supabase.auth.signUp({ email, password });
+    const cleanEmail = email.trim();
+    const cleanPassword = password.trim();
+
+    console.log("SIGNUP attempt:", { cleanEmail, cleanPasswordLength: cleanPassword.length });
+
+    const { error: signUpError } = await supabase.auth.signUp({
+      email: cleanEmail,
+      password: cleanPassword,
+    });
+
     setLoading(false);
 
     if (signUpError) {
-      setError(signUpError.message);
+      console.error("Signup error:", signUpError);
+      setError(signUpError.message || "Something went wrong");
       return;
     }
 

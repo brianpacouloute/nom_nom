@@ -136,7 +136,14 @@ export default function Profile() {
         <button className="pill-btn">Saved Restaurants</button>
         <button className="pill-btn">Map</button>
         <button className="pill-btn">Events</button>
-        <button className="pill-btn">Preferences</button>
+        <button
+          className="pill-btn"
+          type="button"
+          onClick={() => navigate("/preferences")}
+        >
+          Preferences
+        </button>
+
         <button className="pill-btn">Settings</button>
       </div>
 

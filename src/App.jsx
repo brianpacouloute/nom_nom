@@ -5,6 +5,7 @@ import Login from "./pages/Login.jsx";
 import Signup from "./pages/Signup.jsx";
 import Profile from "./pages/Profile.jsx";
 import CreateProfile from "./pages/CreateProfile.jsx";
+import Preferences from "./pages/Preferences.jsx";
 
 export default function App() {
   return (
@@ -28,6 +29,7 @@ export default function App() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/create-profile" element={<CreateProfile />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/preferences" element={<Preferences />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </>

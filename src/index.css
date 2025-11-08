@@ -222,3 +222,35 @@ label{ display:block; margin: 12px 0 6px; font-weight:700; color:#fff }
 }
 .avatar-upload:disabled{ opacity:.7; cursor:default }
 
+.field-group {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.15);
+  color: #fff;
+}
+
+.field-group h3 {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+
+.field-hint {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: #e5e7eb;
+}
+
+.option-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  font-size: 14px;
+}
+
+.option-list label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
