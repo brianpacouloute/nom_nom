@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { supabase } from "../lib/supabase";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 export default function Profile() {
   const [profile, setProfile] = useState(null);
@@ -11,8 +11,13 @@ export default function Profile() {
 
   useEffect(() => {
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { navigate("/login"); return; }
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        navigate("/login");
+        return;
+      }
 
       const { data, error } = await supabase
         .from("profiles")
@@ -21,7 +26,9 @@ export default function Profile() {
         .maybeSingle();
 
       if (error) console.error(error);
-      setProfile(data || { user_id: user.id, display_name: "Nommer", avatar_url: null });
+      setProfile(
+        data || { user_id: user.id, display_name: "Nommer", avatar_url: null }
+      );
       setLoading(false);
     })();
   }, [navigate]);
@@ -44,7 +51,8 @@ export default function Profile() {
       alert("Please choose an image file.");
       return;
     }
-    if (file.size > 2 * 1024 * 1024) { // 2MB
+    if (file.size > 2 * 1024 * 1024) {
+      // 2MB
       alert("Please choose an image under 2MB.");
       return;
     }
@@ -52,8 +60,13 @@ export default function Profile() {
     setUploading(true);
 
     // get current user
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setUploading(false); return; }
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setUploading(false);
+      return;
+    }
 
     // file path in bucket
     const ext = file.name.split(".").pop() || "jpg";
@@ -92,29 +105,39 @@ export default function Profile() {
 
     setProfile((p) => ({ ...p, avatar_url: publicUrl }));
     setUploading(false);
+
     // reset input so the same file can be picked again later if desired
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
-  if (loading) return (
-    <main className="form-card">
-      <h2>Profile</h2>
-      <p style={{ color:"#fff" }}>Loading…</p>
-    </main>
-  );
+  if (loading)
+    return (
+      <main className="form-card">
+        <h2>Profile</h2>
+        <p style={{ color: "#fff" }}>Loading…</p>
+      </main>
+    );
 
   return (
     <section className="profile-wrap">
       <div className="profile-top">
         <div className="avatar">
           {profile?.avatar_url ? (
-            <img src={profile.avatar_url} alt="Profile" className="avatar-img" />
+            <img
+              src={profile.avatar_url}
+              alt="Profile"
+              className="avatar-img"
+            />
           ) : (
             <span className="avatar-placeholder">+</span>
           )}
 
           {/* Small floating upload button on the avatar */}
-          <button className="avatar-upload" onClick={pickFile} disabled={uploading}>
+          <button
+            className="avatar-upload"
+            onClick={pickFile}
+            disabled={uploading}
+          >
             {uploading ? "…" : "📷"}
           </button>
           <input
@@ -133,9 +156,15 @@ export default function Profile() {
 
       <div className="menu-list">
         <button className="pill-btn">Play Roulette</button>
-        <button className="pill-btn">Saved Restaurants</button>
-        <button className="pill-btn">Map</button>
-        <button className="pill-btn">Events</button>
+        <Link to="/saved" className="pill-btn">
+          Saved Restaurants
+        </Link>
+        <Link to="/map" className="pill-btn">
+          Map
+        </Link>
+        <Link to="/events" className="pill-btn">
+          Events
+        </Link>
         <button
           className="pill-btn"
           type="button"
@@ -143,12 +172,15 @@ export default function Profile() {
         >
           Preferences
         </button>
-
-        <button className="pill-btn">Settings</button>
+        <Link to="/settings" className="pill-btn">
+          Settings
+        </Link>
       </div>
 
       <div className="profile-footer">
-        <button className="link-btn" onClick={signOut}>Sign out</button>
+        <button className="link-btn" onClick={signOut}>
+          Sign out
+        </button>
       </div>
     </section>
   );

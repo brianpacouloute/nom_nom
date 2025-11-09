@@ -179,8 +179,13 @@ label{ display:block; margin: 12px 0 6px; font-weight:700; color:#fff }
 
 /* big pill buttons */
 .menu-list{
-  display:flex; flex-direction:column; gap:22px;
+  display:flex;
+  flex-direction:column;
+  gap:22px;
   margin: 28px 0 18px;
+
+  /* center children */
+  align-items:center;
 }
 .pill-btn{
   appearance:none; border:0; cursor:pointer;
@@ -192,9 +197,19 @@ label{ display:block; margin: 12px 0 6px; font-weight:700; color:#fff }
   box-shadow: 0 10px 20px rgba(0,0,0,.18), inset 0 -2px 0 rgba(255,255,255,.12);
   letter-spacing: .5px;
   transition: transform .06s ease, background .15s ease, box-shadow .15s ease;
+
+  /* make links behave like full-width buttons and center text */
+  display:block;
+  width:min(640px, 90%);
+  margin:0 auto;
+  text-align:center;
+  text-decoration:none;
 }
 .pill-btn:hover{ background: var(--brand-dk); transform: translateY(-1px); }
 .pill-btn:active{ transform: translateY(1px); }
+
+.pill-btn:link,
+.pill-btn:visited { color:#fff; text-decoration:none; }
 
 .profile-footer{
   display:flex; justify-content:center; margin-top: 4px;
@@ -222,6 +237,7 @@ label{ display:block; margin: 12px 0 6px; font-weight:700; color:#fff }
 }
 .avatar-upload:disabled{ opacity:.7; cursor:default }
 
+/* === Unique fields from second CSS === */
 .field-group {
   margin-top: 16px;
   padding: 12px 14px;
@@ -254,3 +270,18 @@ label{ display:block; margin: 12px 0 6px; font-weight:700; color:#fff }
   gap: 6px;
   font-weight: 500;
 }
+
+/* === Unique page/list section from first CSS === */
+.back-link {
+  display:inline-block;
+  margin:12px 0 16px;
+  text-decoration:none;
+  font-weight:700;
+  color:#6b0f0f;
+}
+.back-link:hover { opacity:.85; }
+.page-wrap { max-width:720px; margin:40px auto; padding:0 16px; }
+.page-title { text-align:center; margin:8px 0 24px; }
+.card { background:#f7c0b7; border-radius:16px; padding:16px 20px; box-shadow:0 8px 18px rgba(0,0,0,.2); }
+.list { display:grid; gap:16px; }
+.list-item { background:#f9d5ce; border-radius:14px; padding:16px 18px; box-shadow:0 8px 16px rgba(0,0,0,.18); }

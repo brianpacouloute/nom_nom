@@ -6,13 +6,25 @@ import Signup from "./pages/Signup.jsx";
 import Profile from "./pages/Profile.jsx";
 import CreateProfile from "./pages/CreateProfile.jsx";
 import Preferences from "./pages/Preferences.jsx";
+import SavedRestaurants from "./pages/SavedRestaurants.jsx";
+import MapPage from "./pages/Map.jsx";
+import EventsPage from "./pages/Events.jsx";
+import SettingsPage from "./pages/Settings.jsx";
 
 export default function App() {
   return (
     <>
       <header style={{ borderBottom: "1px solid #eee" }}>
-        <div style={{ maxWidth: 900, margin: "0 auto", padding: "12px 16px",
-                      display: "flex", justifyContent: "space-between", fontFamily: "system-ui, sans-serif" }}>
+        <div
+          style={{
+            maxWidth: 900,
+            margin: "0 auto",
+            padding: "12px 16px",
+            display: "flex",
+            justifyContent: "space-between",
+            fontFamily: "system-ui, sans-serif",
+          }}
+        >
           <div style={{ fontWeight: 700 }}>🍜 Nom Nom Wheel</div>
           <nav style={{ display: "flex", gap: 12 }}>
             <Link to="/">Home</Link>
@@ -30,6 +42,10 @@ export default function App() {
         <Route path="/create-profile" element={<CreateProfile />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/preferences" element={<Preferences />} />
+        <Route path="/saved" element={<SavedRestaurants />} />
+        <Route path="/map" element={<MapPage />} />
+        <Route path="/events" element={<EventsPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </>
