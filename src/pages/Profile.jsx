@@ -155,7 +155,13 @@ export default function Profile() {
       </div>
 
       <div className="menu-list">
-        <button className="pill-btn">Play Roulette</button>
+        <button
+            className="pill-btn"
+            type="button"
+            onClick={() => navigate("/roulette")}
+          >
+            Play Roulette
+        </button>
         <Link to="/saved" className="pill-btn">
           Saved Restaurants
         </Link>
@@ -165,6 +171,7 @@ export default function Profile() {
         <Link to="/events" className="pill-btn">
           Events
         </Link>
+
         <button
           className="pill-btn"
           type="button"

@@ -10,6 +10,7 @@ import SavedRestaurants from "./pages/SavedRestaurants.jsx";
 import MapPage from "./pages/Map.jsx";
 import EventsPage from "./pages/Events.jsx";
 import SettingsPage from "./pages/Settings.jsx";
+import Roulette from "./pages/Roulette.jsx";
 
 export default function App() {
   return (
@@ -46,6 +47,7 @@ export default function App() {
         <Route path="/map" element={<MapPage />} />
         <Route path="/events" element={<EventsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/roulette" element={<Roulette />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </>
