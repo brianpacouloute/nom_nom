@@ -9,7 +9,7 @@ import Profile from "./pages/Profile.jsx";
 import CreateProfile from "./pages/CreateProfile.jsx";
 import Preferences from "./pages/Preferences.jsx";
 import Roulette from "./pages/Roulette.jsx";
-import MapView from "./pages/MapView.jsx";
+import MapView from "./pages/Map.jsx";
 import SavedRestaurants from "./pages/SavedRestaurants.jsx";
 
 export default function App() {

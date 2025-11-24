@@ -4,6 +4,7 @@ import useGeolocation from "../hooks/useGeolocation";
 import { fetchRestaurantsNear } from "../lib/fetchRestaurants";
 import { getCurrentProfile } from "../lib/getProfile";
 import { supabase } from "../lib/supabase";
+import { Link } from "react-router-dom";
 
 const MAX_SPINS_PER_DAY = 10;
 const MAX_SEGMENTS = 10;
@@ -435,14 +436,13 @@ export default function Roulette() {
                   flexWrap: "wrap",
                 }}
               >
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${result.lat},${result.lng}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="link-btn"
-                >
-                  View in Google Maps
-                </a>
+              <Link
+                to={`/map?name=${encodeURIComponent(result.name)}&lat=${result.lat}&lng=${result.lng}`}
+                className="link-btn"
+              >
+                View in Maps
+              </Link>
+
 
                 <button
                   type="button"
