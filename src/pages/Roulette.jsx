@@ -1,301 +1,474 @@
 // src/pages/Roulette.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import useGeolocation from "../hooks/useGeolocation";
+import { fetchRestaurantsNear } from "../lib/fetchRestaurants";
+import { getCurrentProfile } from "../lib/getProfile";
+import { supabase } from "../lib/supabase";
 
-// === Overpass helper kept in this file ===
-const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
+const MAX_SPINS_PER_DAY = 10;
+const MAX_SEGMENTS = 10;
 
-function norm(s) {
-  return (s || "").trim();
-}
+// Build a clip-path polygon that is a clean wedge of the circle
+function makeSliceClipPath(index, total) {
+  if (total <= 0) return "none";
 
-async function fetchNearbyPlaces(lat, lng, radiusKm = 5) {
-  const radius_m = Math.max(100, Math.min(25000, radiusKm * 1000));
+  const anglePer = (2 * Math.PI) / total;
+  const start = anglePer * index - anglePer / 2;
+  const end = start + anglePer;
 
-  const query = `
-    [out:json][timeout:20];
-    (
-      node["amenity"~"restaurant|fast_food|cafe|food_court"](around:${radius_m},${lat},${lng});
-      way["amenity"~"restaurant|fast_food|cafe|food_court"](around:${radius_m},${lat},${lng});
-      relation["amenity"~"restaurant|fast_food|cafe|food_court"](around:${radius_m},${lat},${lng});
-    );
-    out center 200;
-  `;
-
-  const res = await fetch(OVERPASS_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ data: query }).toString(),
-  });
-
-  if (!res.ok) {
-    throw new Error(`Overpass error: ${res.status}`);
+  function polarToPercent(angle) {
+    const r = 55;
+    const cx = 50;
+    const cy = 50;
+    const x = cx + r * Math.cos(angle - Math.PI / 2); // rotate so 0° is top
+    const y = cy + r * Math.sin(angle - Math.PI / 2);
+    return `${x}% ${y}%`;
   }
 
-  const data = await res.json();
-  const out = [];
+  const p1 = polarToPercent(start);
+  const p2 = polarToPercent(end);
 
-  for (const el of data.elements || []) {
-    const tags = el.tags || {};
-    let lat0, lng0;
-
-    if (el.type === "node") {
-      lat0 = el.lat;
-      lng0 = el.lon;
-    } else {
-      const center = el.center || {};
-      lat0 = center.lat;
-      lng0 = center.lon;
-    }
-
-    if (lat0 == null || lng0 == null) continue;
-
-    const name = norm(tags.name) || "Unnamed";
-    const cuisineRaw = (tags.cuisine || "")
-      .split(";")
-      .map((c) => c.trim())
-      .filter(Boolean);
-    const cuisineTags = cuisineRaw.map((c) => c.toLowerCase());
-    const primaryCuisine =
-      (cuisineRaw[0] &&
-        cuisineRaw[0].replace(/\b\w/g, (m) => m.toUpperCase())) ||
-      (tags.amenity || "")
-        .replace("_", " ")
-        .replace(/\b\w/g, (m) => m.toUpperCase());
-
-    const diet = [];
-    if (["yes", "only"].includes(tags["diet:vegetarian"])) diet.push("vegetarian");
-    if (["yes", "only"].includes(tags["diet:vegan"])) diet.push("vegan");
-    if (["yes", "only"].includes(tags["diet:gluten_free"]))
-      diet.push("gluten_free");
-
-    out.push({
-      id: `osm-${el.type}-${el.id}`,
-      name,
-      cuisine: primaryCuisine,
-      cuisine_tags: cuisineTags,
-      price: "",
-      rating: null,
-      diet,
-      lat: lat0,
-      lng: lng0,
-    });
-  }
-
-  const seen = new Set();
-  const unique = [];
-  for (const r of out) {
-    const key = `${r.name.trim().toLowerCase()}-${r.lat.toFixed(5)}-${r.lng.toFixed(5)}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    unique.push(r);
-  }
-
-  return unique;
-}
-
-// === small distance helper ===
-function haversine(lat1, lon1, lat2, lon2) {
-  if ([lat1, lon1, lat2, lon2].some((v) => v == null)) return null;
-  const R = 6371; // km
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return `polygon(50% 50%, ${p1}, ${p2})`;
 }
 
 export default function Roulette() {
-  const [coords, setCoords] = useState({ lat: null, lng: null });
-  const [radiusKm, setRadiusKm] = useState(5);
-  const [loading, setLoading] = useState(false);
-  const [places, setPlaces] = useState([]);
-  const [error, setError] = useState("");
-  const [currentPick, setCurrentPick] = useState(null);
+  const { coords, error: geoError } = useGeolocation();
 
-  // try to auto-get location once
+  const [pref, setPref] = useState(null);
+  const [restaurants, setRestaurants] = useState([]);
+  const [pool, setPool] = useState([]); // matches prefs (before saved filter)
+  const [loading, setLoading] = useState(true);
+  const [spinning, setSpinning] = useState(false);
+  const [result, setResult] = useState(null);
+  const [savedIds, setSavedIds] = useState(new Set());
+  const [savingFav, setSavingFav] = useState(false);
+  const [spinError, setSpinError] = useState("");
+
+  const wheelRef = useRef(null);
+
+  // Load profile + favorites
   useEffect(() => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (pos) =>
-        setCoords({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-        }),
-      () => {},
-      { timeout: 3000 }
-    );
+    (async () => {
+      try {
+        const profile = await getCurrentProfile();
+        setPref(profile);
+
+        if (profile?.userId) {
+          const { data, error } = await supabase
+            .from("favorites")
+            .select("restaurant_id")
+            .eq("user_id", profile.userId);
+
+          if (error) {
+            console.error("Load favorites error:", error);
+          } else if (data) {
+            setSavedIds(new Set(data.map((r) => String(r.restaurant_id))));
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load profile/favorites:", err);
+      }
+    })();
   }, []);
 
-  async function loadNearby() {
-    if (coords.lat == null || coords.lng == null) {
-      setError("Location is required. Use the 'Use my location' button.");
+  // Fetch nearby restaurants once we have location (and when prefs/radius change)
+  useEffect(() => {
+    if (!coords) return;
+
+    (async () => {
+      setLoading(true);
+      try {
+        const radiusMeters = (pref?.radiusKm || 5) * 1000;
+        const nearby = await fetchRestaurantsNear(coords, radiusMeters);
+        setRestaurants(nearby);
+      } catch (err) {
+        console.error("Failed to fetch nearby restaurants:", err);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [coords, pref]);
+
+  // Apply preference filters ONLY (cuisine, price, open now)
+  useEffect(() => {
+    if (!restaurants.length) {
+      setPool([]);
       return;
     }
-    setError("");
-    setLoading(true);
+
+    if (!pref) {
+      setPool(restaurants);
+      return;
+    }
+
+    const filtered = restaurants.filter((r) => {
+      if (pref.cuisines?.length && !pref.cuisines.includes(r.cuisine)) {
+        return false;
+      }
+      if (pref.price && r.price && r.price !== pref.price) {
+        return false;
+      }
+      if (pref.openNow && r.openNow === false) {
+        return false;
+      }
+      return true;
+    });
+
+    setPool(filtered);
+  }, [restaurants, pref]);
+
+  // Build wheel segments:
+  // - start from pool (or restaurants if pool is empty)
+  // - remove saved restaurants
+  // - keep up to 10
+  const segments = useMemo(() => {
+    const base = pool.length ? pool : restaurants;
+    if (!base.length) return [];
+
+    let unsaved = base.filter((r) => !savedIds.has(String(r.id)));
+
+    // if unsaved is empty but we have restaurants, fall back to showing them
+    if (!unsaved.length) {
+      unsaved = base;
+    }
+
+    return unsaved.slice(0, MAX_SEGMENTS);
+  }, [pool, restaurants, savedIds]);
+
+  // Save / unsave favorite – updates savedIds so wheel updates
+  async function toggleFavorite(r) {
+    if (!pref) return;
+    const id = String(r.id);
+    setSavingFav(true);
+
     try {
-      const items = await fetchNearbyPlaces(coords.lat, coords.lng, radiusKm);
-      const withDist = items.map((r) => ({
-        ...r,
-        distance: haversine(coords.lat, coords.lng, r.lat, r.lng),
-      }));
-      withDist.sort(
-        (a, b) => (a.distance ?? 1e9) - (b.distance ?? 1e9)
-      );
-      setPlaces(withDist);
-      setCurrentPick(null);
-    } catch (err) {
-      console.error(err);
-      setError("Failed to load nearby places. Try again.");
+      if (savedIds.has(id)) {
+        const { error } = await supabase
+          .from("favorites")
+          .delete()
+          .match({ user_id: pref.userId, restaurant_id: id });
+
+        if (error) {
+          console.error("Delete favorite error:", error);
+        } else {
+          setSavedIds((prev) => {
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+          });
+        }
+      } else {
+        const { error } = await supabase.from("favorites").insert({
+          user_id: pref.userId,
+          restaurant_id: id,
+          name: r.name,
+          cuisine: r.cuisine,
+          lat: r.lat,
+          lng: r.lng,
+          price: r.price || "$$",
+        });
+
+        if (error) {
+          console.error("Insert favorite error:", error);
+        } else {
+          setSavedIds((prev) => {
+            const next = new Set(prev);
+            next.add(id);
+            return next;
+          });
+        }
+      }
+    } catch (e) {
+      console.error("Favorite toggle failed:", e);
     } finally {
-      setLoading(false);
+      setSavingFav(false);
     }
   }
 
-  function spin() {
-    if (!places.length) return;
-    const idx = Math.floor(Math.random() * places.length);
-    setCurrentPick(places[idx]);
+  // Spin logic
+  async function spin() {
+    if (!coords) {
+      setSpinError(
+        "We need your location to spin. Please allow location access."
+      );
+      return;
+    }
+    if (!segments.length || spinning || !pref) return;
+
+    setSpinError("");
+
+    const isAdmin = pref.role === "admin";
+    const todayStr = new Date().toISOString().slice(0, 10);
+    let spins = pref.dailySpins || 0;
+
+    if (pref.lastSpinDate !== todayStr) {
+      spins = 0;
+    }
+
+    if (!isAdmin && spins >= MAX_SPINS_PER_DAY) {
+      setSpinError(`You’ve used all ${MAX_SPINS_PER_DAY} spins for today.`);
+      return;
+    }
+
+    const newSpins = spins + 1;
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          daily_spins: newSpins,
+          last_spin_date: todayStr,
+        })
+        .eq("user_id", pref.userId);
+
+      if (error) {
+        console.error("Failed to update spin count:", error);
+      } else {
+        setPref((p) =>
+          p ? { ...p, dailySpins: newSpins, lastSpinDate: todayStr } : p
+        );
+      }
+    } catch (e) {
+      console.error("Failed to update spin count:", e);
+    }
+
+    setSpinning(true);
+    setResult(null);
+
+    const segCount = segments.length;
+    const anglePer = 360 / segCount;
+    const winningIndex = Math.floor(Math.random() * segCount);
+
+    // random number of full spins (6–9),
+    // plus a small random jitter inside the winning slice
+    const baseTurns = 6 + Math.floor(Math.random() * 4); // 6,7,8,9
+    const jitter = (Math.random() - 0.5) * (anglePer * 0.5); // stay well inside slice
+    const targetAngle = baseTurns * 360 - winningIndex * anglePer + jitter;
+
+    const el = wheelRef.current;
+    if (el) {
+      // reset so subsequent spins feel the same
+      el.style.transition = "none";
+      el.style.transform = "rotate(0deg)";
+
+      requestAnimationFrame(() => {
+        el.style.transition =
+          "transform 3.2s cubic-bezier(0.17, 0.67, 0.32, 1.26)";
+        el.style.transform = `rotate(${targetAngle}deg)`;
+      });
+    }
+
+    setTimeout(() => {
+      setResult(segments[winningIndex]);
+      setSpinning(false);
+    }, 3300);
   }
 
-  function toKm(d) {
-    if (d == null) return "—";
-    return (Math.round(d * 10) / 10).toFixed(1);
-  }
+  const hasData = segments.length > 0;
 
   return (
-    <main className="page-wrap">
-      <a href="/profile" className="back-link">
-        ← Back to profile
-      </a>
-      <h1 className="page-title">🍜 Play Roulette</h1>
+    <main className="form-card" style={{ maxWidth: 780 }}>
+      <h2>Roulette</h2>
 
-      <section className="card">
-        <h2>Location & Radius</h2>
-        <div style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr 1fr" }}>
-          <div>
-            <label>Radius (km)</label>
-            <input
-              className="input"
-              type="number"
-              min="0.1"
-              step="0.1"
-              value={radiusKm}
-              onChange={(e) => setRadiusKm(Number(e.target.value) || 1)}
-            />
-          </div>
-          <div style={{ display: "flex", alignItems: "flex-end" }}>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => {
-                if (!navigator.geolocation) {
-                  setError("Geolocation not supported in this browser.");
-                  return;
-                }
-                navigator.geolocation.getCurrentPosition(
-                  (pos) => {
-                    setCoords({
-                      lat: pos.coords.latitude,
-                      lng: pos.coords.longitude,
-                    });
-                    setError("");
-                  },
-                  () => {
-                    setError("Could not get your location.");
-                  }
-                );
+      {geoError && (
+        <p style={{ color: "#fff" }}>
+          Location error: {geoError}. You can still see a sample list.
+        </p>
+      )}
+      {loading && (
+        <p style={{ color: "#fff" }}>Loading nearby restaurants…</p>
+      )}
+      {!loading && !restaurants.length && (
+        <p style={{ color: "#fff" }}>
+          We couldn&apos;t find any restaurants near you. Try again later or
+          increase your radius in Preferences.
+        </p>
+      )}
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(0, 1.1fr) minmax(0, 1fr)",
+          gap: 20,
+          alignItems: "center",
+          marginTop: 12,
+        }}
+      >
+        {/* Wheel column */}
+        <div style={{ display: "flex", justifyContent: "center" }}>
+          <div style={{ position: "relative" }}>
+            <div
+              ref={wheelRef}
+              style={{
+                width: 280,
+                height: 280,
+                borderRadius: "50%",
+                border: "10px solid rgba(0,0,0,.25)",
+                overflow: "hidden",
+                background:
+                  "radial-gradient(circle at 30% 30%, #ffffff 0%, #f5f5f5 45%, #e6e6e6 100%)",
+                position: "relative",
+                boxShadow: "none",
               }}
             >
-              Use my location
-            </button>
+              {hasData ? (
+                segments.map((item, i) => {
+                  const total = segments.length;
+                  const anglePer = 360 / total;
+                  const midAngleDeg = i * anglePer;
+                  const bg =
+                    i % 2 === 0
+                      ? "rgba(255,255,255,0.98)"
+                      : "rgba(255,245,230,0.98)";
+                  const clipPath = makeSliceClipPath(i, total);
+
+                  return (
+                    <div
+                      key={item.id}
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        clipPath,
+                        background: bg,
+                      }}
+                    >
+                      {/* vertical label along the wedge center, pushed toward rim */}
+                      <div
+                        style={{
+                          position: "absolute",
+                          left: "50%",
+                          top: "50%",
+                          transform: `translate(-50%, -50%) rotate(${midAngleDeg}deg)`,
+                          height: "95%",
+                          display: "flex",
+                          alignItems: "flex-end", // push text toward rim
+                          justifyContent: "center",
+                          pointerEvents: "none",
+                          paddingBottom: "66%", // tweak this if you want it closer/further
+                        }}
+                      >
+                        <span
+                          style={{
+                            writingMode: "vertical-rl",
+                            textOrientation: "mixed",
+                            fontSize: 11,
+                            lineHeight: 1.15,
+                            textAlign: "center",
+                            whiteSpace: "normal", // allow multi-line
+                            maxHeight: "100%",
+                            overflow: "hidden",
+                          }}
+                        >
+                          {item.name}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: 24,
+                    textAlign: "center",
+                    fontSize: 14,
+                    color: "var(--muted)",
+                  }}
+                >
+                  No restaurants to show yet.
+                </div>
+              )}
+            </div>
+
+            {/* Pointer */}
+            <div
+              style={{
+                position: "absolute",
+                top: -8,
+                left: "50%",
+                transform: "translateX(-50%)",
+                width: 0,
+                height: 0,
+                borderLeft: "10px solid transparent",
+                borderRight: "10px solid transparent",
+                borderTop: "22px solid var(--brand)",
+                filter: "drop-shadow(0 2px 2px rgba(0,0,0,.4))",
+              }}
+            />
           </div>
         </div>
 
-        <button
-          type="button"
-          className="btn btn-primary mt-24"
-          onClick={loadNearby}
-          disabled={loading}
-        >
-          {loading ? "Loading…" : "Load nearby restaurants"}
-        </button>
-
-        {error && (
-          <p style={{ color: "#b91c1c", marginTop: 8 }}>{error}</p>
-        )}
-
-        {coords.lat != null && (
-          <p style={{ marginTop: 8, fontSize: 14 }}>
-            Using: {coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}
+        {/* Info / actions column */}
+        <div className="card">
+          <p style={{ marginTop: 0 }}>
+            <strong>
+              Nearby options: {pool.length || restaurants.length}
+            </strong>{" "}
+            {pref && (
+              <>
+                within ~{pref.radiusKm || 5} km, price {pref.price || "$$"}
+              </>
+            )}
           </p>
-        )}
-      </section>
 
-      <section className="card" style={{ marginTop: 20 }}>
-        <h2>Spin</h2>
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={spin}
-          disabled={!places.length}
-        >
-          Spin the wheel
-        </button>
-
-        {currentPick && (
-          <div
-            style={{
-              marginTop: 16,
-              padding: 12,
-              borderRadius: 12,
-              background: "#fce7f3",
-            }}
+          <button
+            className="btn btn-primary btn-lg"
+            onClick={spin}
+            disabled={!hasData || spinning}
           >
-            <h3 style={{ margin: 0 }}>{currentPick.name}</h3>
-            <p style={{ margin: "4px 0 0", fontSize: 14 }}>
-              {currentPick.cuisine || "Restaurant"} ·{" "}
-              {toKm(currentPick.distance)} km away
-            </p>
-          </div>
-        )}
+            {spinning ? "Spinning…" : "Spin the wheel"}
+          </button>
 
-        <h3 style={{ marginTop: 20 }}>Nearby options</h3>
-        <ul
-          style={{
-            listStyle: "none",
-            padding: 0,
-            margin: 0,
-            maxHeight: 260,
-            overflowY: "auto",
-          }}
-        >
-          {places.map((p) => (
-            <li
-              key={p.id}
-              style={{
-                padding: "8px 10px",
-                borderRadius: 10,
-                marginBottom: 6,
-                background: "#fed7aa",
-              }}
-            >
-              <strong>{p.name}</strong>{" "}
-              <span style={{ fontSize: 13 }}>
-                ({p.cuisine || "Restaurant"} · {toKm(p.distance)} km)
-              </span>
-            </li>
-          ))}
-          {!places.length && !loading && (
-            <li style={{ fontSize: 14, color: "#4b5563" }}>
-              Load nearby places to see options.
-            </li>
+          {result && (
+            <div style={{ marginTop: 14 }}>
+              <h3 style={{ margin: "4px 0" }}>{result.name}</h3>
+              <p style={{ margin: 0, color: "var(--muted)" }}>
+                {result.cuisine || "Restaurant"} · {result.price || "$$"}
+              </p>
+              <div
+                style={{
+                  marginTop: 8,
+                  display: "flex",
+                  gap: 12,
+                  flexWrap: "wrap",
+                }}
+              >
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${result.lat},${result.lng}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="link-btn"
+                >
+                  View in Google Maps
+                </a>
+
+                <button
+                  type="button"
+                  className="btn"
+                  style={{ padding: "8px 14px", fontSize: 14 }}
+                  disabled={savingFav || !pref}
+                  onClick={() => toggleFavorite(result)}
+                >
+                  {savedIds.has(String(result.id))
+                    ? savingFav
+                      ? "Removing..."
+                      : "Unsave"
+                    : savingFav
+                    ? "Saving..."
+                    : "Save"}
+                </button>
+              </div>
+            </div>
           )}
-        </ul>
-      </section>
+
+          {spinError && (
+            <p style={{ color: "#fff", marginTop: 8 }}>{spinError}</p>
+          )}
+        </div>
+      </div>
     </main>
   );
 }

@@ -155,19 +155,11 @@ export default function Profile() {
       </div>
 
       <div className="menu-list">
-        <button
-            className="pill-btn"
-            type="button"
-            onClick={() => navigate("/roulette")}
-          >
-            Play Roulette
-        </button>
+        <button className="pill-btn" type="button" onClick={() => navigate("/roulette")}>Play Roulette</button>
         <Link to="/saved" className="pill-btn">
           Saved Restaurants
         </Link>
-        <Link to="/map" className="pill-btn">
-          Map
-        </Link>
+        <button className="pill-btn" type="button" onClick={() => navigate("/map")}>Map</button>
         <Link to="/events" className="pill-btn">
           Events
         </Link>
@@ -179,9 +171,6 @@ export default function Profile() {
         >
           Preferences
         </button>
-        <Link to="/settings" className="pill-btn">
-          Settings
-        </Link>
       </div>
 
       <div className="profile-footer">

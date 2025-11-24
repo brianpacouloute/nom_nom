@@ -285,3 +285,49 @@ label{ display:block; margin: 12px 0 6px; font-weight:700; color:#fff }
 .card { background:#f7c0b7; border-radius:16px; padding:16px 20px; box-shadow:0 8px 18px rgba(0,0,0,.2); }
 .list { display:grid; gap:16px; }
 .list-item { background:#f9d5ce; border-radius:14px; padding:16px 18px; box-shadow:0 8px 16px rgba(0,0,0,.18); }
+.site-header {
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(12px);
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.15);
+  position: sticky;
+  top: 0;
+  z-index: 999;
+}
+
+.navbar {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 16px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brand {
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+.nav {
+  display: flex;
+  gap: 20px;
+}
+
+.nav a {
+  color: #fff;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 15px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.nav a:hover {
+  background: rgba(255,255,255,0.15);
+}
+
