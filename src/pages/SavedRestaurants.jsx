@@ -1,4 +1,3 @@
-// src/pages/SavedRestaurants.jsx
 import React, { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { getCurrentProfile } from "../lib/getProfile";

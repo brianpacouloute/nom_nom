@@ -23,9 +23,8 @@ const DIET_OPTIONS = [
 ];
 
 const PRICE_OPTIONS = ["$", "$$", "$$$"];
-const RADIUS_OPTIONS = [3, 5, 10, 15]; // km
+const RADIUS_OPTIONS = [3, 5, 10, 15];
 
-// helper to toggle checkboxes
 function toggleInList(value, list, setter) {
   if (list.includes(value)) {
     setter(list.filter((v) => v !== value));
@@ -39,10 +38,8 @@ export default function Preferences() {
   const [savingPrefs, setSavingPrefs] = useState(false);
   const [error, setError] = useState("");
 
-  // top-level tabs: food | roulette | security
   const [activeTab, setActiveTab] = useState("food");
 
-  // food / roulette prefs
   const [cuisines, setCuisines] = useState([]);
   const [dietary, setDietary] = useState([]);
   const [priceTier, setPriceTier] = useState("$$");
@@ -50,7 +47,6 @@ export default function Preferences() {
   const [openNowOnly, setOpenNowOnly] = useState(false);
   const [includeVisited, setIncludeVisited] = useState(false);
 
-  // account info
   const [userId, setUserId] = useState(null);
   const [userEmail, setUserEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -58,12 +54,10 @@ export default function Preferences() {
   const [lastUsernameChange, setLastUsernameChange] = useState(null);
   const [role, setRole] = useState("user");
 
-  // username change state
   const [usernameSaving, setUsernameSaving] = useState(false);
   const [usernameError, setUsernameError] = useState("");
   const [usernameMessage, setUsernameMessage] = useState("");
 
-  // password change state
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -74,7 +68,6 @@ export default function Preferences() {
 
   const navigate = useNavigate();
 
-  // Load existing preferences + account info
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -151,7 +144,6 @@ export default function Preferences() {
     })();
   }, [navigate]);
 
-  // Save food + roulette preferences (not security stuff)
   async function handleSavePreferences(e) {
     e.preventDefault();
     setSavingPrefs(true);
@@ -191,7 +183,6 @@ export default function Preferences() {
     navigate("/profile");
   }
 
-  // Change username (only if available, only once per day)
   async function handleUsernameChange() {
     setUsernameError("");
     setUsernameMessage("");
@@ -215,7 +206,6 @@ export default function Preferences() {
       ? String(lastUsernameChange).slice(0, 10)
       : null;
 
-    // Only enforce the once-per-day limit if NOT admin
     if (role !== "admin" && lastDateStr === todayStr) {
       setUsernameError("You can only change your username once per day.");
       return;
@@ -224,7 +214,6 @@ export default function Preferences() {
 
     setUsernameSaving(true);
     try {
-      // Check uniqueness
       const { data: existing, error: checkErr } = await supabase
         .from("profiles")
         .select("user_id")
@@ -241,7 +230,6 @@ export default function Preferences() {
         return;
       }
 
-      // Update username + last change date
       const { error: updateErr } = await supabase
         .from("profiles")
         .update({
@@ -267,7 +255,6 @@ export default function Preferences() {
     }
   }
 
-  // 1) Verify current password first
 async function handleVerifyCurrentPassword() {
   setPasswordError("");
   setPasswordMessage("");
@@ -295,7 +282,6 @@ async function handleVerifyCurrentPassword() {
       return;
     }
 
-    // Current password is valid → move to "new password" step
     setPasswordStep("new");
     setPasswordMessage("Current password verified. Enter a new password.");
   } catch (e) {

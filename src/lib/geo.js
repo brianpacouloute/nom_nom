@@ -1,4 +1,3 @@
-// src/lib/geo.js
 export function haversineKm(a, b) {
   const R = 6371;
   const dLat = ((b.lat - a.lat) * Math.PI) / 180;

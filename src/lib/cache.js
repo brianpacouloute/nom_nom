@@ -1,5 +1,4 @@
-// src/lib/cache.js
-const TTL_MS = 1000 * 60 * 5; // 5 minutes
+const TTL_MS = 1000 * 60 * 5;
 
 export function getCache(key) {
   try {

@@ -46,7 +46,6 @@ export default function Profile() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // basic checks (optional)
     if (!file.type.startsWith("image/")) {
       alert("Please choose an image file.");
       return;
@@ -72,7 +71,6 @@ export default function Profile() {
     const ext = file.name.split(".").pop() || "jpg";
     const path = `${user.id}/${Date.now()}.${ext}`;
 
-    // upload (upsert true so re-uploads overwrite)
     const { error: uploadErr } = await supabase.storage
       .from("avatars")
       .upload(path, file, { upsert: true });

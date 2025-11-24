@@ -1,9 +1,8 @@
-// src/pages/MapView.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import useGeolocation from "../hooks/useGeolocation";
 import { fetchRestaurantsNear } from "../lib/fetchRestaurants";
 import { getCurrentProfile } from "../lib/getProfile";
-import { haversineKm } from "../lib/geo"; // optional, for distance display
+import { haversineKm } from "../lib/geo";
 
 export default function MapView() {
   const { coords, error: geoError } = useGeolocation();
@@ -12,7 +11,6 @@ export default function MapView() {
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Load preferences once
   useEffect(() => {
     (async () => {
       try {
@@ -24,7 +22,6 @@ export default function MapView() {
     })();
   }, []);
 
-  // Fetch real restaurants near user
   useEffect(() => {
     if (!coords) return;
     (async () => {
@@ -46,12 +43,10 @@ export default function MapView() {
     if (!pref) return restaurants;
 
     return restaurants.map((r) => {
-      // Add distance (km) for display
       const distanceKm = coords
         ? haversineKm(coords, { lat: r.lat, lng: r.lng })
         : null;
 
-      // Basic filters (same logic as Roulette)
       const matchesCuisine =
         !pref.cuisines?.length || pref.cuisines.includes(r.cuisine);
       const matchesPrice = !pref.price || !r.price || r.price === pref.price;

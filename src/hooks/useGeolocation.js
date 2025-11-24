@@ -1,4 +1,3 @@
-// src/hooks/useGeolocation.js
 import { useEffect, useState } from "react";
 
 const STORAGE_KEY = "nomnom_last_coords";
@@ -8,7 +7,7 @@ export default function useGeolocation() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // 1) Try cached coords first
+    // Try cached coords first
     const cached = localStorage.getItem(STORAGE_KEY);
     if (cached) {
       try {
@@ -24,7 +23,7 @@ export default function useGeolocation() {
       }
     }
 
-    // 2) Ask browser for current position
+    // Ask browser for current position
     if (!navigator.geolocation) {
       setError("Geolocation not supported in this browser.");
       return;

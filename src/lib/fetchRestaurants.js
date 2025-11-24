@@ -1,6 +1,6 @@
 import { getCache, setCache } from "./cache";
 
-const TTL_MIN = 10; // how long before refreshing cache
+const TTL_MIN = 20; // how long before refreshing cache
 
 export async function fetchRestaurantsNear(coords, radiusMeters = 2000) {
   if (!coords) return [];

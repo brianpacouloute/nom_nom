@@ -1,9 +1,6 @@
-// src/lib/getProfile.js
 import { supabase } from "./supabase";
 
-// Load the current user's profile and normalize it into a nice JS object
 export async function getCurrentProfile() {
-  // 1) Get auth user
   const { data: userData, error: userErr } = await supabase.auth.getUser();
   if (userErr || !userData?.user) {
     throw userErr || new Error("Not signed in");
@@ -11,7 +8,7 @@ export async function getCurrentProfile() {
 
   const user = userData.user;
 
-  // 2) Load profile row from DB
+  // Load profile row from DB
   const { data, error } = await supabase
     .from("profiles")
     .select(
@@ -26,7 +23,6 @@ export async function getCurrentProfile() {
 
   const row = data || {};
 
-  // 3) Normalize into fields the rest of the app expects
   const cuisines =
     row.preferred_cuisines
       ?.split(",")

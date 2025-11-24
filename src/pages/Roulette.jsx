@@ -20,7 +20,7 @@ function makeSliceClipPath(index, total) {
     const r = 55;
     const cx = 50;
     const cy = 50;
-    const x = cx + r * Math.cos(angle - Math.PI / 2); // rotate so 0° is top
+    const x = cx + r * Math.cos(angle - Math.PI / 2);
     const y = cy + r * Math.sin(angle - Math.PI / 2);
     return `${x}% ${y}%`;
   }
@@ -36,7 +36,7 @@ export default function Roulette() {
 
   const [pref, setPref] = useState(null);
   const [restaurants, setRestaurants] = useState([]);
-  const [pool, setPool] = useState([]); // matches prefs (before saved filter)
+  const [pool, setPool] = useState([]);
   const [loading, setLoading] = useState(true);
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState(null);
@@ -71,7 +71,7 @@ export default function Roulette() {
     })();
   }, []);
 
-  // Fetch nearby restaurants once we have location (and when prefs/radius change)
+  // Fetch nearby restaurants once we have location
   useEffect(() => {
     if (!coords) return;
 
@@ -89,7 +89,7 @@ export default function Roulette() {
     })();
   }, [coords, pref]);
 
-  // Apply preference filters ONLY (cuisine, price, open now)
+  // Apply preference filters (cuisine, price, open now)
   useEffect(() => {
     if (!restaurants.length) {
       setPool([]);
@@ -135,7 +135,6 @@ export default function Roulette() {
     return unsaved.slice(0, MAX_SEGMENTS);
   }, [pool, restaurants, savedIds]);
 
-  // Save / unsave favorite – updates savedIds so wheel updates
   async function toggleFavorite(r) {
     if (!pref) return;
     const id = String(r.id);
@@ -246,7 +245,7 @@ export default function Roulette() {
 
     const el = wheelRef.current;
     if (el) {
-      // reset so subsequent spins feel the same
+      // reset so subsequent are same
       el.style.transition = "none";
       el.style.transform = "rotate(0deg)";
 
